@@ -7,6 +7,7 @@ import (
 )
 
 func SetupProjectRoutes(app *fiber.App) {
-	api := app.Group("/project")
-	api.Post("/", controllers.CreateProject)
+	projectGroup := app.Group("/project")
+	projectGroup.Post("/", controllers.CreateProject)
+	projectGroup.Get("/", controllers.GetAllProjects)
 }

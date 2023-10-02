@@ -20,3 +20,11 @@ func CreateProject(c *fiber.Ctx) error {
 
 	return c.JSON(newProject)
 }
+
+func GetAllProjects(c *fiber.Ctx) error {
+	projects, err := services.GetAllProjects()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(projects)
+}
