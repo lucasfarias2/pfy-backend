@@ -1,6 +1,6 @@
 Work in progress.
 
-<img width="200" alt="Screenshot 2023-10-04 at 19 39 17" src="https://github.com/shopinpack/packlify-cloud-backend/assets/19575942/274c0c74-f1f9-4082-8331-53a9a7e8b8b6">
+<img width="200" alt="Screenshot 2023-10-04 at 19 43 14" src="https://github.com/shopinpack/packlify-cloud-backend/assets/19575942/0ebaf279-222d-44e7-a7ea-f9239f5fbde0">
 
 # Packlify Cloud Backend
 This project is the backend application for Packlify Cloud.
