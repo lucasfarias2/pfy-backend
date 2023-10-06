@@ -23,21 +23,31 @@ func CreateProject(project models.Project) (models.Project, error) {
 
 	// Check if the selected toolkit is React
 	if toolkitName == "React" {
-		awsConfig := map[string]string{
-			"ami":          "ami-0f3164307ee5d695a",
-			"instanceType": "t2.micro",
-			"name":         project.Name,
-		}
+		githubAccessToken := os.Getenv("GITHUB_ACCESS_TOKEN")
+		newRepo, err := GenerateRepoFromTemplate(githubAccessToken, project.Name, "shopinpack", "packlify-sdk-react-template")
 
-		reservation, err := CreateAWSInstance(awsConfig)
 		if err != nil {
 			return models.Project{}, err
 		}
 
-		fmt.Println("AWS Instance Created:", reservation)
+		// Create Elastic Beanstalk environment
+		ebConfig := map[string]string{
+			"applicationName":   project.Name,
+			"environmentName":   "production",
+			"solutionStackName": "64bit Amazon Linux 2023 v6.0.1 running Node.js 18",
+			"cnamePrefix":       project.Name,
+		}
 
-		githubAccessToken := os.Getenv("GITHUB_ACCESS_TOKEN")
-		newRepo, err := CreateGithubRepo(githubAccessToken, project.Name)
+		err = CreateElasticBeanstalkApplication(map[string]string{
+			"applicationName": project.Name,
+		})
+
+		if err != nil {
+			return models.Project{}, err
+		}
+
+		err = CreateElasticBeanstalkEnvironment(ebConfig)
+
 		if err != nil {
 			return models.Project{}, err
 		}
