@@ -1,10 +1,9 @@
 package controllers
 
 import (
+	"github.com/gofiber/fiber/v2"
 	"packlify-cloud-backend/models"
 	"packlify-cloud-backend/services"
-
-	"github.com/gofiber/fiber/v2"
 )
 
 func CreateProject(c *fiber.Ctx) error {

@@ -20,6 +20,10 @@ func main() {
 
 	app := fiber.New()
 
+	app.Get("/test", func(c *fiber.Ctx) error {
+		return c.SendString("Test from backend")
+	})
+
 	routes.SetupProjectRoutes(app)
 
 	log.Println("Server started at :8080")

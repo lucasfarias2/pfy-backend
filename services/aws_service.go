@@ -1,5 +1,3 @@
-// awsService.go
-
 package services
 
 import (
