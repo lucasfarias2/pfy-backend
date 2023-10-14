@@ -12,20 +12,20 @@ DROP TABLE IF EXISTS organizations CASCADE;
 -- Create organization table
 CREATE TABLE organizations (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255)
+    name VARCHAR(255) UNIQUE
 );
 
 -- Create toolkit table
 CREATE TABLE toolkits (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255),
+    name VARCHAR(255) UNIQUE,
     description TEXT
 );
 
 -- Create project table
 CREATE TABLE projects (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255),
+    name VARCHAR(255) UNIQUE,
     organization_id INT REFERENCES organizations(id),
     toolkit_id INT REFERENCES toolkits(id)
 );
@@ -38,4 +38,3 @@ INSERT INTO toolkits (name, description) VALUES ('React', 'This is a React toolk
 
 -- Insert into project, associating with the organization and toolkit
 INSERT INTO projects (name, organization_id, toolkit_id) VALUES ('Test Project', 1, 1);
-

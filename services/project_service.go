@@ -1,7 +1,8 @@
 package services
 
 import (
-	"fmt"
+	"database/sql"
+	"log"
 	"os"
 	"packlify-cloud-backend/models"
 	"packlify-cloud-backend/utils"
@@ -23,36 +24,29 @@ func CreateProject(project models.Project) (models.Project, error) {
 
 	// Check if the selected toolkit is React
 	if toolkitName == "React" {
-		githubAccessToken := os.Getenv("GITHUB_ACCESS_TOKEN")
-		newRepo, err := GenerateRepoFromTemplate(githubAccessToken, project.Name, "shopinpack", "packlify-sdk-react-template")
-
 		if err != nil {
 			return models.Project{}, err
 		}
 
-		// Create Elastic Beanstalk environment
-		ebConfig := map[string]string{
-			"applicationName":   project.Name,
-			"environmentName":   "production",
-			"solutionStackName": "64bit Amazon Linux 2023 v6.0.1 running Node.js 18",
-			"cnamePrefix":       project.Name,
+		// Create the SDK App using the project name
+		err := CreateSDKApp(project.Name)
+
+		// Create a new GitHub repo
+		githubToken := os.Getenv("GITHUB_ACCESS_TOKEN")
+		cloneURL, err := CreateGitHubRepo(project.Name, githubToken)
+		if err != nil {
+			log.Fatalf("Error creating Github repo: %s", err)
 		}
 
-		err = CreateElasticBeanstalkApplication(map[string]string{
-			"applicationName": project.Name,
-		})
+		// Push the project to the new repo
+		err = PushToGitHubRepo(project.Name, cloneURL)
+		if err != nil {
+			log.Fatalf("Error pushing Github repo: %s", err)
+		}
 
 		if err != nil {
 			return models.Project{}, err
 		}
-
-		err = CreateElasticBeanstalkEnvironment(ebConfig)
-
-		if err != nil {
-			return models.Project{}, err
-		}
-
-		fmt.Println("GitHub Repository Created:", *newRepo.CloneURL)
 	}
 
 	return project, nil
@@ -64,7 +58,12 @@ func GetAllProjects() ([]models.Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Print("Error getting projects")
+		}
+	}(rows)
 
 	var projects []models.Project
 	for rows.Next() {
@@ -75,4 +74,18 @@ func GetAllProjects() ([]models.Project, error) {
 		projects = append(projects, project)
 	}
 	return projects, nil
+}
+
+func GetProjectById(id int) (models.Project, error) {
+	db := utils.GetDB()
+	var project models.Project
+
+	// Query the database for the project with the specified ID
+	err := db.QueryRow("SELECT id, name FROM projects WHERE id=$1", id).Scan(&project.ID, &project.Name)
+	if err != nil {
+		log.Print("Error querying projects")
+		return models.Project{}, err
+	}
+
+	return project, nil
 }

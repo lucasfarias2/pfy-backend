@@ -69,3 +69,9 @@ Thumbs.db
 *.swp
 
 .env
+
+# Used for clonning sdk
+cloned
+
+# Binaries
+packlify-cloud-backend
