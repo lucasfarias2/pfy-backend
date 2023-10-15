@@ -47,6 +47,25 @@ func CreateProject(project models.Project) (models.Project, error) {
 		if err != nil {
 			return models.Project{}, err
 		}
+
+		// Create Elastic Beanstalk environment
+		ebConfig := map[string]string{
+			"applicationName":   project.Name,
+			"environmentName":   "production",
+			"solutionStackName": "64bit Amazon Linux 2023 v6.0.1 running Node.js 18",
+			"cnamePrefix":       project.Name,
+		}
+
+		err = CreateElasticBeanstalkApplication(map[string]string{
+			"applicationName": project.Name,
+		})
+
+		if err != nil {
+			return models.Project{}, err
+		}
+
+		err = CreateElasticBeanstalkEnvironment(ebConfig)
+
 	}
 
 	return project, nil
