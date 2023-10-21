@@ -10,4 +10,5 @@ func SetupProjectRoutes(app *fiber.App) {
 	projectGroup := app.Group("/project")
 	projectGroup.Post("/", controllers.CreateProject)
 	projectGroup.Get("/", controllers.GetAllProjects)
+	projectGroup.Get("/:id/status", controllers.GetProjectStatus)
 }

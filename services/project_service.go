@@ -101,3 +101,37 @@ func GetProjectById(id int) (models.Project, error) {
 
 	return project, nil
 }
+
+func GetProjectStatusById(id int) ([]models.Task, error) {
+	db := utils.GetDB()
+	query := `
+        SELECT id, project_id, task_type_id, status, message, created_at, updated_at
+        FROM tasks
+        WHERE project_id = $1
+        ORDER BY created_at DESC
+    `
+
+	// Execute the query
+	rows, err := db.Query(query, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tasks []models.Task
+	for rows.Next() {
+		var task models.Task
+		err := rows.Scan(&task.ID, &task.ProjectID, &task.TaskTypeID, &task.Status, &task.Message, &task.CreatedAt, &task.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, task)
+	}
+
+	// Check for errors from iterating over rows
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
+}
