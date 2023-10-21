@@ -17,7 +17,7 @@ func CreateProject(project models.Project) (models.Project, error) {
 	}
 
 	// Step 1: Create a new task for database insertion
-	task, err := tm.CreateTask(project.ID, "Creating project and pushing to Github", "")
+	task, err := tm.CreateTask(project.ID, "Running", "", 1)
 	if err != nil {
 		return models.Project{}, err
 	}
@@ -54,7 +54,7 @@ func CreateProject(project models.Project) (models.Project, error) {
 		}
 
 		// Step 2: Update task status after insertion
-		err = tm.UpdateTaskStatus(task.ID, "Project created", "")
+		err = tm.UpdateTaskStatus(task.ID, "Success", "Project created successfully")
 		if err != nil {
 			return models.Project{}, err
 		}

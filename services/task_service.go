@@ -17,11 +17,11 @@ func NewTaskManager() *TaskManager {
 	}
 }
 
-func (tm *TaskManager) CreateTask(projectID int, status string, message string) (models.Task, error) {
-	task := models.Task{ProjectID: projectID, Status: status, Message: message}
+func (tm *TaskManager) CreateTask(projectID int, status string, message string, taskTypeID int) (models.Task, error) {
+	task := models.Task{ProjectID: projectID, Status: status, Message: message, TaskTypeID: taskTypeID}
 
-	err := tm.db.QueryRow("INSERT INTO tasks(project_id, status, message) VALUES($1, $2, $3) RETURNING id, created_at, updated_at, message",
-		task.ProjectID, task.Status, task.Message).Scan(&task.ID, &task.CreatedAt, &task.UpdatedAt, &task.Message)
+	err := tm.db.QueryRow("INSERT INTO tasks(project_id, status, message, task_type_id) VALUES($1, $2, $3, $4) RETURNING id, created_at, updated_at, message, task_type_id",
+		task.ProjectID, task.Status, task.Message, task.TaskTypeID).Scan(&task.ID, &task.CreatedAt, &task.UpdatedAt, &task.Message, &task.TaskTypeID)
 	return task, err
 }
 

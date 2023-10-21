@@ -9,6 +9,9 @@ DROP TABLE IF EXISTS projects CASCADE;
 DROP TABLE IF EXISTS toolkits CASCADE;
 DROP TABLE IF EXISTS organizations CASCADE;
 
+-- Types first
+CREATE TYPE task_status AS ENUM ('Pending', 'Running', 'Success', 'Failed');
+
 -- Create organization table
 CREATE TABLE organizations
 (
@@ -33,16 +36,22 @@ CREATE TABLE projects
     toolkit_id      INT REFERENCES toolkits (id)
 );
 
-CREATE TABLE tasks
+CREATE TABLE task_types
 (
-    id         SERIAL PRIMARY KEY,
-    project_id INT         NOT NULL REFERENCES projects (id),
-    status     VARCHAR(50) NOT NULL,
-    message    TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id   SERIAL PRIMARY KEY,
+    name VARCHAR NOT NULL
 );
 
+CREATE TABLE tasks
+(
+    id           SERIAL PRIMARY KEY,
+    project_id   INT         NOT NULL REFERENCES projects (id),
+    task_type_id INT REFERENCES task_types (id),
+    status       task_status NOT NULL,
+    message      TEXT,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Insert into organization
 INSERT INTO organizations (name)
@@ -55,3 +64,11 @@ VALUES ('React', 'This is a React toolkit');
 -- Insert into project, associating with the organization and toolkit
 INSERT INTO projects (name, organization_id, toolkit_id)
 VALUES ('Test Project', 1, 1);
+
+-- Insert into Task Types some predefined task
+INSERT INTO task_types (name)
+VALUES ('CREATE_PROJECT'),
+       ('CREATE_GITHUB'),
+       ('PUSH_GITHUB'),
+       ('CREATE_GCP_BUILD'),
+       ('CREATE_GCP_RUN');
