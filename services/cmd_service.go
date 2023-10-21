@@ -30,7 +30,10 @@ func PushToGitHubRepo(repoName, cloneURL string) error {
 	projectPath := "./cloned/" + repoName
 
 	// Change directory to the cloned project
-	os.Chdir(projectPath)
+	err := os.Chdir(projectPath)
+	if err != nil {
+		return err
+	}
 
 	// Git Init
 	cmd := exec.Command("git", "init")

@@ -3,15 +3,21 @@ package services
 import (
 	"database/sql"
 	"log"
-	"os"
 	"packlify-cloud-backend/models"
 	"packlify-cloud-backend/utils"
 )
 
 func CreateProject(project models.Project) (models.Project, error) {
 	db := utils.GetDB()
+	tm := NewTaskManager()
 
 	err := db.QueryRow("INSERT INTO projects(name, organization_id, toolkit_id) VALUES($1, $2, $3) RETURNING id", project.Name, project.OrganizationID, project.ToolkitID).Scan(&project.ID)
+	if err != nil {
+		return models.Project{}, err
+	}
+
+	// Step 1: Create a new task for database insertion
+	task, err := tm.CreateTask(project.ID, "Creating project and pushing to Github", "")
 	if err != nil {
 		return models.Project{}, err
 	}
@@ -29,43 +35,29 @@ func CreateProject(project models.Project) (models.Project, error) {
 		}
 
 		// Create the SDK App using the project name
-		err := CreateSDKApp(project.Name)
+		//err := CreateSDKApp(project.Name)
+		if err != nil {
+			return models.Project{}, err
+		}
 
 		// Create a new GitHub repo
-		githubToken := os.Getenv("GITHUB_ACCESS_TOKEN")
-		cloneURL, err := CreateGitHubRepo(project.Name, githubToken)
+		//githubToken := os.Getenv("GITHUB_ACCESS_TOKEN")
+		//cloneURL, err := CreateGitHubRepo(project.Name, githubToken)
 		if err != nil {
 			log.Fatalf("Error creating Github repo: %s", err)
 		}
 
 		// Push the project to the new repo
-		err = PushToGitHubRepo(project.Name, cloneURL)
+		//err = PushToGitHubRepo(project.Name, cloneURL)
 		if err != nil {
 			log.Fatalf("Error pushing Github repo: %s", err)
 		}
 
+		// Step 2: Update task status after insertion
+		err = tm.UpdateTaskStatus(task.ID, "Project created", "")
 		if err != nil {
 			return models.Project{}, err
 		}
-
-		// Create Elastic Beanstalk environment
-		ebConfig := map[string]string{
-			"applicationName":   project.Name,
-			"environmentName":   "production",
-			"solutionStackName": "64bit Amazon Linux 2023 v6.0.1 running Node.js 18",
-			"cnamePrefix":       project.Name,
-		}
-
-		err = CreateElasticBeanstalkApplication(map[string]string{
-			"applicationName": project.Name,
-		})
-
-		if err != nil {
-			return models.Project{}, err
-		}
-
-		err = CreateElasticBeanstalkEnvironment(ebConfig)
-
 	}
 
 	return project, nil
