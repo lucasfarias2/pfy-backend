@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"packlify-cloud-backend/models"
+	"packlify-cloud-backend/models/constants"
 	"packlify-cloud-backend/utils"
 )
 
@@ -17,7 +18,7 @@ func CreateProject(project models.Project) (models.Project, error) {
 	}
 
 	// Step 1: Create a new task for database insertion
-	task, err := tm.CreateTask(project.ID, "Running", "", 1)
+	task, err := tm.CreateTask(project.ID, constants.Running, "", 1)
 	if err != nil {
 		return models.Project{}, err
 	}
@@ -54,7 +55,7 @@ func CreateProject(project models.Project) (models.Project, error) {
 		}
 
 		// Step 2: Update task status after insertion
-		err = tm.UpdateTaskStatus(task.ID, "Success", "Project created successfully")
+		err = tm.UpdateTaskStatus(task.ID, constants.Success, "Project created successfully")
 		if err != nil {
 			return models.Project{}, err
 		}

@@ -3,6 +3,7 @@ package controllers
 import (
 	"github.com/gofiber/fiber/v2"
 	"packlify-cloud-backend/models"
+	"packlify-cloud-backend/models/constants"
 	"packlify-cloud-backend/services"
 )
 
@@ -20,7 +21,7 @@ func CreateProject(c *fiber.Ctx) error {
 	errs := make(chan error)
 
 	go func() {
-		task, err := tm.CreateTask(newProject.ID, "Pending", "Task will run soon...", 4)
+		task, err := tm.CreateTask(newProject.ID, constants.Running, "Creating Cloud Build", 4)
 
 		if err != nil {
 			errs <- err
@@ -37,7 +38,7 @@ func CreateProject(c *fiber.Ctx) error {
 			return
 		}
 
-		err = tm.UpdateTaskStatus(task.ID, "Success", "Cloud build was created successfully")
+		err = tm.UpdateTaskStatus(task.ID, constants.Success, "Cloud build was created successfully")
 		if err != nil {
 			return
 		}
