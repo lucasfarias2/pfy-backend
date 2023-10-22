@@ -36,9 +36,7 @@ func CreateProject(c *fiber.Ctx) error {
 			return
 		}
 
-		// time.Sleep(20 * time.Second) // Faking the time it takes to complete the task
-
-		err = services.CreateCloudRun(newProject)
+		err = services.CreateArtifactRepository(newProject)
 		if err != nil {
 			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
 			if err != nil {
@@ -56,7 +54,7 @@ func CreateProject(c *fiber.Ctx) error {
 	}()
 
 	go func() {
-		<-createCloudBuildDone // wait for deployment to finish
+		<-createCloudBuildDone // wait for Artifact Repository to be created
 
 		// Create a new task for integration
 		task, err := tm.CreateTask(newProject.ID, constants.Running, "Creating Cloud Run", 5)
@@ -65,7 +63,7 @@ func CreateProject(c *fiber.Ctx) error {
 			return
 		}
 
-		//err = services.CreateCloudRun(newProject)
+		err = services.CreateCloudRun(newProject)
 		if err != nil {
 			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
 			errs <- err
