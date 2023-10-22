@@ -67,8 +67,10 @@ VALUES ('Test Project', 1, 1);
 
 -- Insert into Task Types some predefined task
 INSERT INTO task_types (name)
-VALUES ('CREATE_PROJECT'),
-       ('CREATE_GITHUB'),
-       ('PUSH_GITHUB'),
-       ('CREATE_GCP_BUILD'),
-       ('CREATE_GCP_RUN');
+VALUES ('PROJECT_CREATE'),
+       ('PROJECT_CREATE_GITHUB'),
+       ('PROJECT_PUSH_GITHUB'),
+       ('GCP_CREATE_ARTIFACT_REPOSITORY'),
+       ('GCP_CREATE_BUILD_TRIGGER'),
+       ('GCP_CREATE_CLOUD_RUN'),
+       ('GCP_RUN_BUILD_TRIGGER');

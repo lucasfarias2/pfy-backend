@@ -4,12 +4,15 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/gofiber/fiber/v2"
 	"packlify-cloud-backend/models"
 	"packlify-cloud-backend/models/constants"
 	"packlify-cloud-backend/services"
+	"packlify-cloud-backend/services/gcp"
 	"strconv"
 	"time"
+
+	"cloud.google.com/go/cloudbuild/apiv1/v2/cloudbuildpb"
+	"github.com/gofiber/fiber/v2"
 )
 
 func CreateProject(c *fiber.Ctx) error {
@@ -24,19 +27,23 @@ func CreateProject(c *fiber.Ctx) error {
 	}
 
 	tm := services.NewTaskManager()
-	createCloudBuildDone := make(chan bool)
-	createCloudRunDone := make(chan bool)
+	gcpCreateArtifactRepository := make(chan bool)
+	gcpCreateBuildTrigger := make(chan bool)
+	buildTriggerChan := make(chan *cloudbuildpb.BuildTrigger)
+	gcpCreateCloudRun := make(chan bool)
+	gcpRunBuildTrigger := make(chan bool)
 	errs := make(chan error)
 
+	// Create Artifact Repository Task
 	go func() {
-		task, err := tm.CreateTask(newProject.ID, constants.Running, "Creating Cloud Build", 4)
+		task, err := tm.CreateTask(newProject.ID, constants.Running, "", 4)
 
 		if err != nil {
 			errs <- err
 			return
 		}
 
-		err = services.CreateArtifactRepository(newProject)
+		err = gcp.CreateArtifactRepository(newProject)
 		if err != nil {
 			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
 			if err != nil {
@@ -46,24 +53,52 @@ func CreateProject(c *fiber.Ctx) error {
 			return
 		}
 
-		err = tm.UpdateTaskStatus(task.ID, constants.Success, "Cloud build was created successfully")
-		if err != nil {
-			return
-		}
-		createCloudBuildDone <- true
-	}()
-
-	go func() {
-		<-createCloudBuildDone // wait for Artifact Repository to be created
-
-		// Create a new task for integration
-		task, err := tm.CreateTask(newProject.ID, constants.Running, "Creating Cloud Run", 5)
+		err = tm.UpdateTaskStatus(task.ID, constants.Success, "")
 		if err != nil {
 			errs <- err
 			return
 		}
 
-		err = services.CreateCloudRun(newProject)
+		gcpCreateArtifactRepository <- true
+	}()
+
+	// Create Build Trigger - runs in parallel with Create Artifact Repository
+	go func() {
+		task, err := tm.CreateTask(newProject.ID, constants.Running, "", 5)
+		if err != nil {
+			errs <- err
+			return
+		}
+
+		buildTrigger, err := gcp.CreateBuildTrigger(newProject)
+		if err != nil {
+			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
+			errs <- err
+			return
+		}
+
+		err = tm.UpdateTaskStatus(task.ID, constants.Success, "")
+		if err != nil {
+			errs <- err
+			return
+		}
+
+		gcpCreateBuildTrigger <- true
+		buildTriggerChan <- buildTrigger
+	}()
+
+	// Create Cloud Run - depends on Build Trigger
+	go func() {
+		<-gcpCreateBuildTrigger
+		buildTrigger := <-buildTriggerChan // receive buildTrigger from the channel
+
+		task, err := tm.CreateTask(newProject.ID, constants.Running, "", 6)
+		if err != nil {
+			errs <- err
+			return
+		}
+
+		err = gcp.CreateCloudRun(newProject, buildTrigger)
 		if err != nil {
 			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
 			errs <- err
@@ -71,8 +106,40 @@ func CreateProject(c *fiber.Ctx) error {
 		}
 
 		// Update task status to Success
-		err = tm.UpdateTaskStatus(task.ID, constants.Success, "Cloud Run was created successfully")
-		createCloudRunDone <- true
+		err = tm.UpdateTaskStatus(task.ID, constants.Success, "")
+		if err != nil {
+			errs <- err
+			return
+		}
+
+		gcpCreateCloudRun <- true
+	}()
+
+	// Run Build Trigger - depends on Create Cloud Run
+	go func() {
+		<-gcpCreateCloudRun
+
+		task, err := tm.CreateTask(newProject.ID, constants.Running, "", 7)
+		if err != nil {
+			errs <- err
+			return
+		}
+
+		// err = gcp.CreateCloudRun(newProject)
+		fmt.Println("Running Build Trigger")
+		if err != nil {
+			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
+			errs <- err
+			return
+		}
+
+		err = tm.UpdateTaskStatus(task.ID, constants.Success, "")
+		if err != nil {
+			errs <- err
+			return
+		}
+
+		gcpRunBuildTrigger <- true
 	}()
 
 	return c.JSON(newProject)
