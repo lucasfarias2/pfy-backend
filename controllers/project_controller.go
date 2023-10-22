@@ -36,9 +36,9 @@ func CreateProject(c *fiber.Ctx) error {
 			return
 		}
 
-		time.Sleep(20 * time.Second) // Faking the time it takes to complete the task
+		// time.Sleep(20 * time.Second) // Faking the time it takes to complete the task
 
-		// err = services.CreateCloudBuild(newProject)
+		err = services.CreateCloudRun(newProject)
 		if err != nil {
 			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
 			if err != nil {

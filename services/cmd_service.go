@@ -36,7 +36,7 @@ func PushToGitHubRepo(repoName, cloneURL string) error {
 	}
 
 	// Git Init
-	cmd := exec.Command("git", "init")I 
+	cmd := exec.Command("git", "init")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
