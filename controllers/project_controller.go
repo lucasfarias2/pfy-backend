@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	"cloud.google.com/go/cloudbuild/apiv1/v2/cloudbuildpb"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -29,7 +28,6 @@ func CreateProject(c *fiber.Ctx) error {
 	tm := services.NewTaskManager()
 	gcpCreateArtifactRepository := make(chan bool)
 	gcpCreateBuildTrigger := make(chan bool)
-	buildTriggerChan := make(chan *cloudbuildpb.BuildTrigger)
 	gcpCreateCloudRun := make(chan bool)
 	gcpRunBuildTrigger := make(chan bool)
 	errs := make(chan error)
@@ -70,7 +68,7 @@ func CreateProject(c *fiber.Ctx) error {
 			return
 		}
 
-		buildTrigger, err := gcp.CreateBuildTrigger(newProject)
+		// err = gcp.CreateBuildTrigger(newProject)
 		if err != nil {
 			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
 			errs <- err
@@ -84,13 +82,11 @@ func CreateProject(c *fiber.Ctx) error {
 		}
 
 		gcpCreateBuildTrigger <- true
-		buildTriggerChan <- buildTrigger
 	}()
 
 	// Create Cloud Run - depends on Build Trigger
 	go func() {
 		<-gcpCreateBuildTrigger
-		buildTrigger := <-buildTriggerChan // receive buildTrigger from the channel
 
 		task, err := tm.CreateTask(newProject.ID, constants.Running, "", 6)
 		if err != nil {
@@ -98,7 +94,7 @@ func CreateProject(c *fiber.Ctx) error {
 			return
 		}
 
-		err = gcp.CreateCloudRun(newProject, buildTrigger)
+		// err = gcp.CreateCloudRun(newProject)
 		if err != nil {
 			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
 			errs <- err
@@ -126,7 +122,6 @@ func CreateProject(c *fiber.Ctx) error {
 		}
 
 		// err = gcp.CreateCloudRun(newProject)
-		fmt.Println("Running Build Trigger")
 		if err != nil {
 			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
 			errs <- err

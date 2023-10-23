@@ -6,7 +6,6 @@ import (
 	"os"
 	"packlify-cloud-backend/models"
 
-	"cloud.google.com/go/cloudbuild/apiv1/v2/cloudbuildpb"
 	run "cloud.google.com/go/run/apiv2"
 	"cloud.google.com/go/run/apiv2/runpb"
 
@@ -14,7 +13,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-func CreateCloudRun(project models.Project, buildTrigger *cloudbuildpb.BuildTrigger) error {
+func CreateCloudRun(project models.Project) error {
 	ctx := context.Background()
 
 	gcpProjectId := os.Getenv("GCP_PROJECT_ID")
@@ -51,8 +50,9 @@ func CreateCloudRun(project models.Project, buildTrigger *cloudbuildpb.BuildTrig
 		return err
 	}
 
+	gcpRegion := os.Getenv("GCP_REGION")
 	serviceName := project.Name + "-service"
-	imageName := buildTrigger.GetBuild().GetImages()[0]
+	imageName := fmt.Sprintf("%s-docker.pkg.dev/%s/%s/%s:$COMMIT_SHA", gcpRegion, gcpProjectId, project.Name+"-docker", project.Name)
 
 	op, err := runClient.CreateService(ctx, &runpb.CreateServiceRequest{
 		Parent: fmt.Sprintf("projects/%s/locations/%s", os.Getenv("GCP_PROJECT_ID"), os.Getenv("GCP_REGION")),

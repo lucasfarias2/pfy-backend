@@ -12,7 +12,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-func CreateBuildTrigger(project models.Project) (*cloudbuildpb.BuildTrigger, error) {
+func CreateBuildTrigger(project models.Project) error {
 	ctx := context.Background()
 
 	gcpProjectId := os.Getenv("GCP_PROJECT_ID")
@@ -45,7 +45,7 @@ func CreateBuildTrigger(project models.Project) (*cloudbuildpb.BuildTrigger, err
 
 	creds, err := google.CredentialsFromJSON(ctx, []byte(credsJSON), cloudbuild.DefaultAuthScopes()...)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	cbClient, err := cloudbuild.NewClient(
@@ -54,7 +54,7 @@ func CreateBuildTrigger(project models.Project) (*cloudbuildpb.BuildTrigger, err
 	)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	triggerOp, err := cbClient.CreateBuildTrigger(ctx, &cloudbuildpb.CreateBuildTriggerRequest{
@@ -133,5 +133,5 @@ func CreateBuildTrigger(project models.Project) (*cloudbuildpb.BuildTrigger, err
 
 	defer cbClient.Close()
 
-	return triggerOp, err
+	return err
 }
