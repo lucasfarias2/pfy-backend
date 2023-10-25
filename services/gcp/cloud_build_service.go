@@ -12,7 +12,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-func CreateBuildTrigger(project models.Project) error {
+func CreateBuildTrigger(project models.Project) (*cloudbuildpb.BuildTrigger, error) {
 	ctx := context.Background()
 
 	gcpProjectId := os.Getenv("GCP_PROJECT_ID")
@@ -45,7 +45,7 @@ func CreateBuildTrigger(project models.Project) error {
 
 	creds, err := google.CredentialsFromJSON(ctx, []byte(credsJSON), cloudbuild.DefaultAuthScopes()...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	cbClient, err := cloudbuild.NewClient(
@@ -54,7 +54,7 @@ func CreateBuildTrigger(project models.Project) error {
 	)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	triggerOp, err := cbClient.CreateBuildTrigger(ctx, &cloudbuildpb.CreateBuildTriggerRequest{
@@ -123,6 +123,64 @@ func CreateBuildTrigger(project models.Project) error {
 					}},
 			},
 		},
+	})
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(triggerOp)
+
+	defer cbClient.Close()
+
+	return triggerOp, err
+}
+
+func RunBuildTrigger(buildTrigger *cloudbuildpb.BuildTrigger) error {
+	ctx := context.Background()
+
+	gcpProjectId := os.Getenv("GCP_PROJECT_ID")
+
+	credsJSON := fmt.Sprintf(
+		`{
+			"type": "service_account",
+			"project_id": "%s",
+			"private_key_id": "%s",
+			"private_key": "%s",
+			"client_email": "%s",
+			"client_id": "%s",
+			"auth_uri": "https://accounts.google.com/o/oauth2/auth",
+			"token_uri": "https://oauth2.googleapis.com/token",
+			"auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+			"client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/%s"
+		}`,
+		gcpProjectId,
+		os.Getenv("GCP_PRIVATE_KEY_ID"),
+		os.Getenv("GCP_PRIVATE_KEY"),
+		os.Getenv("GCP_CLIENT_EMAIL"),
+		os.Getenv("GCP_CLIENT_ID"),
+		os.Getenv("GCP_CLIENT_EMAIL"),
+	)
+
+	creds, err := google.CredentialsFromJSON(ctx, []byte(credsJSON), cloudbuild.DefaultAuthScopes()...)
+	if err != nil {
+		return err
+	}
+
+	cbClient, err := cloudbuild.NewClient(
+		ctx,
+		option.WithCredentials(creds),
+	)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(buildTrigger)
+
+	triggerOp, err := cbClient.RunBuildTrigger(ctx, &cloudbuildpb.RunBuildTriggerRequest{
+		ProjectId: gcpProjectId,
+		TriggerId: buildTrigger.Id,
 	})
 
 	if err != nil {

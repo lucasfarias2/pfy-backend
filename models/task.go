@@ -6,11 +6,11 @@ import (
 )
 
 type Task struct {
-	ID         int
-	ProjectID  int
-	TaskTypeID int
-	Status     constants.TaskStatus
-	Message    string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID        int
+	ProjectID int
+	TaskName  string
+	Status    constants.TaskStatus
+	Message   string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

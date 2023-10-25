@@ -18,7 +18,7 @@ func CreateProject(project models.Project) (models.Project, error) {
 	}
 
 	// Step 1: Create a new task for database insertion
-	task, err := tm.CreateTask(project.ID, constants.Running, "", 1)
+	task, err := tm.CreateTask(project.ID, constants.Running, "", string(constants.PROJECT_CREATE))
 	if err != nil {
 		return models.Project{}, err
 	}
@@ -105,7 +105,7 @@ func GetProjectById(id int) (models.Project, error) {
 func GetProjectStatusById(id int) ([]models.Task, error) {
 	db := utils.GetDB()
 	query := `
-        SELECT id, project_id, task_type_id, status, message, created_at, updated_at
+        SELECT id, project_id, task_name, status, message, created_at, updated_at
         FROM tasks
         WHERE project_id = $1
         ORDER BY created_at DESC
@@ -121,14 +121,13 @@ func GetProjectStatusById(id int) ([]models.Task, error) {
 	var tasks []models.Task
 	for rows.Next() {
 		var task models.Task
-		err := rows.Scan(&task.ID, &task.ProjectID, &task.TaskTypeID, &task.Status, &task.Message, &task.CreatedAt, &task.UpdatedAt)
+		err := rows.Scan(&task.ID, &task.ProjectID, &task.TaskName, &task.Status, &task.Message, &task.CreatedAt, &task.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
 		tasks = append(tasks, task)
 	}
 
-	// Check for errors from iterating over rows
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}

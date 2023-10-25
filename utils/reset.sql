@@ -36,17 +36,11 @@ CREATE TABLE projects
     toolkit_id      INT REFERENCES toolkits (id)
 );
 
-CREATE TABLE task_types
-(
-    id   SERIAL PRIMARY KEY,
-    name VARCHAR NOT NULL
-);
-
 CREATE TABLE tasks
 (
     id           SERIAL PRIMARY KEY,
     project_id   INT         NOT NULL REFERENCES projects (id),
-    task_type_id INT REFERENCES task_types (id),
+    task_name TEXT,
     status       task_status NOT NULL,
     message      TEXT,
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -64,13 +58,3 @@ VALUES ('React', 'This is a React toolkit');
 -- Insert into project, associating with the organization and toolkit
 INSERT INTO projects (name, organization_id, toolkit_id)
 VALUES ('Test Project', 1, 1);
-
--- Insert into Task Types some predefined task
-INSERT INTO task_types (name)
-VALUES ('PROJECT_CREATE'),
-       ('PROJECT_CREATE_GITHUB'),
-       ('PROJECT_PUSH_GITHUB'),
-       ('GCP_CREATE_ARTIFACT_REPOSITORY'),
-       ('GCP_CREATE_BUILD_TRIGGER'),
-       ('GCP_CREATE_CLOUD_RUN'),
-       ('GCP_RUN_BUILD_TRIGGER');
