@@ -52,13 +52,15 @@ func CreateProject(c *fiber.Ctx) error {
 	}()
 
 	go func() {
+		appInstallationId := <-gcpGetGitHubAppInstallationId
 
-		appInstallationId, err := services.ConnectGitHubWithCloudBuild()
+		fmt.Println("app id", appInstallationId)
+
+		//appInstallationId, err := services.ConnectGitHubWithCloudBuild()
 		if err != nil {
 			return
 		}
 
-		gcpGetGitHubAppInstallationId <- appInstallationId
 	}()
 
 	go func() {
