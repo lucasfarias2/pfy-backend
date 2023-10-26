@@ -3,6 +3,7 @@ package services
 import (
 	"database/sql"
 	"log"
+	"os"
 	"packlify-cloud-backend/models"
 	"packlify-cloud-backend/models/constants"
 	"packlify-cloud-backend/utils"
@@ -17,7 +18,6 @@ func CreateProject(project models.Project) (models.Project, error) {
 		return models.Project{}, err
 	}
 
-	// Step 1: Create a new task for database insertion
 	task, err := tm.CreateTask(project.ID, constants.Running, "", string(constants.PROJECT_CREATE))
 	if err != nil {
 		return models.Project{}, err
@@ -29,32 +29,27 @@ func CreateProject(project models.Project) (models.Project, error) {
 		return models.Project{}, err
 	}
 
-	// Check if the selected toolkit is React
 	if toolkitName == "React" {
 		if err != nil {
 			return models.Project{}, err
 		}
 
-		// Create the SDK App using the project name
-		//err := CreateSDKApp(project.Name)
+		err := CreateSDKApp(project.Name)
 		if err != nil {
 			return models.Project{}, err
 		}
 
-		// Create a new GitHub repo
-		//githubToken := os.Getenv("GITHUB_ACCESS_TOKEN")
-		//cloneURL, err := CreateGitHubRepo(project.Name, githubToken)
+		githubToken := os.Getenv("GITHUB_ACCESS_TOKEN")
+		cloneURL, err := CreateGitHubRepo(project.Name, githubToken)
 		if err != nil {
 			log.Fatalf("Error creating Github repo: %s", err)
 		}
 
-		// Push the project to the new repo
-		//err = PushToGitHubRepo(project.Name, cloneURL)
+		err = PushToGitHubRepo(project.Name, cloneURL)
 		if err != nil {
 			log.Fatalf("Error pushing Github repo: %s", err)
 		}
 
-		// Step 2: Update task status after insertion
 		err = tm.UpdateTaskStatus(task.ID, constants.Success, "Project created successfully")
 		if err != nil {
 			return models.Project{}, err
@@ -64,9 +59,9 @@ func CreateProject(project models.Project) (models.Project, error) {
 	return project, nil
 }
 
-func GetAllProjects() ([]models.Project, error) {
+func GetAllProjects(organizationId string) ([]models.Project, error) {
 	db := utils.GetDB()
-	rows, err := db.Query("SELECT id, name FROM projects")
+	rows, err := db.Query("SELECT id, name FROM projects WHERE organization_id = $1", organizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -133,4 +128,21 @@ func GetProjectStatusById(id int) ([]models.Task, error) {
 	}
 
 	return tasks, nil
+}
+
+func UpdateProjectRepoName(id int, newRepoName string) (models.Project, error) {
+	db := utils.GetDB()
+	var project models.Project
+
+	_, err := db.Exec("UPDATE projects SET github_repo = $1 WHERE id = $2", newRepoName, id)
+	if err != nil {
+		return models.Project{}, err
+	}
+
+	err = db.QueryRow("SELECT id, name, github_repo, organization_id, toolkit_id FROM projects WHERE id = $1", id).Scan(&project.ID, &project.Name, &project.GitHubRepo, &project.OrganizationID, &project.ToolkitID)
+	if err != nil {
+		return models.Project{}, err
+	}
+
+	return project, nil
 }

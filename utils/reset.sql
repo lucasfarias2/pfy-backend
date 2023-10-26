@@ -32,6 +32,7 @@ CREATE TABLE projects
 (
     id              SERIAL PRIMARY KEY,
     name            VARCHAR(255) UNIQUE,
+    github_repo    VARCHAR(255) UNIQUE,
     organization_id INT REFERENCES organizations (id),
     toolkit_id      INT REFERENCES toolkits (id)
 );
@@ -56,5 +57,5 @@ INSERT INTO toolkits (name, description)
 VALUES ('React', 'This is a React toolkit');
 
 -- Insert into project, associating with the organization and toolkit
-INSERT INTO projects (name, organization_id, toolkit_id)
-VALUES ('Test Project', 1, 1);
+INSERT INTO projects (name, organization_id, toolkit_id, github_repo)
+VALUES ('test-project-1', 1, 1, 'test-repo-7');

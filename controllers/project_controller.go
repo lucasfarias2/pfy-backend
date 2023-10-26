@@ -32,14 +32,18 @@ func CreateProject(c *fiber.Ctx) error {
 	}
 
 	tm := services.NewTaskManager()
+	createProjectDone := make(chan bool)
 	gcpCreateArtifactRepository := make(chan bool)
 	gcpCreateBuildTrigger := make(chan BuildTriggerData)
-
 	gcpRunBuildTrigger := make(chan bool)
 	errs := make(chan error)
 
-	// Create Artifact Repository Task
 	go func() {
+		createProjectDone <- true
+	}()
+
+	go func() {
+		<-createProjectDone
 		task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_CREATE_ARTIFACT_REPOSITORY))
 
 		if err != nil {
@@ -67,8 +71,8 @@ func CreateProject(c *fiber.Ctx) error {
 		gcpCreateArtifactRepository <- true
 	}()
 
-	// Create Build Trigger - runs in parallel with Create Artifact Repository
 	go func() {
+		<-gcpCreateArtifactRepository
 		task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_CREATE_BUILD_TRIGGER))
 		if err != nil {
 			errs <- err
@@ -95,7 +99,6 @@ func CreateProject(c *fiber.Ctx) error {
 		}
 	}()
 
-	// Run Build Trigger - depends on Create Cloud Run
 	go func() {
 		gcpCreateBuildData := <-gcpCreateBuildTrigger
 
@@ -105,7 +108,7 @@ func CreateProject(c *fiber.Ctx) error {
 			return
 		}
 
-		err = gcp.RunBuildTrigger(gcpCreateBuildData.Trigger)
+		err = gcp.RunBuildTrigger(newProject, gcpCreateBuildData.Trigger)
 
 		if err != nil {
 			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
@@ -126,7 +129,11 @@ func CreateProject(c *fiber.Ctx) error {
 }
 
 func GetAllProjects(c *fiber.Ctx) error {
-	projects, err := services.GetAllProjects()
+	organization_id := c.Query("organization_id")
+	if organization_id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid organization ID"})
+	}
+	projects, err := services.GetAllProjects(organization_id)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
