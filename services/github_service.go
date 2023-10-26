@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -47,4 +48,42 @@ func CreateGitHubRepo(repoName string, token string) (string, error) {
 	}
 
 	return result["clone_url"].(string), nil
+}
+
+type Installation struct {
+	ID      int    `json:"id"`
+	AppSlug string `json:"app_slug"`
+}
+
+type Response struct {
+	Installations []Installation `json:"installations"`
+}
+
+func FetchAppInstallations(token string) (int, error) {
+	apiURL := "https://api.github.com/orgs/" + os.Getenv("GITHUB_OWNER") + "/installations"
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", apiURL, nil)
+	req.Header.Set("Authorization", "token "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	var result Response
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, installation := range result.Installations {
+		if installation.AppSlug == "google-cloud-build" {
+			return installation.ID, nil
+		}
+	}
+
+	return 0, errors.New("installation not found")
 }

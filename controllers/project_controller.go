@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"os"
 	"packlify-cloud-backend/models"
 	"packlify-cloud-backend/models/constants"
 	"packlify-cloud-backend/services"
@@ -34,9 +35,31 @@ func CreateProject(c *fiber.Ctx) error {
 	tm := services.NewTaskManager()
 	createProjectDone := make(chan bool)
 	gcpCreateArtifactRepository := make(chan bool)
+	gcpGetGitHubAppInstallationId := make(chan int)
 	gcpCreateBuildTrigger := make(chan BuildTriggerData)
 	gcpRunBuildTrigger := make(chan bool)
 	errs := make(chan error)
+
+	go func() {
+		githubToken := os.Getenv("GITHUB_ACCESS_TOKEN")
+
+		appInstallationId, err := services.FetchAppInstallations(githubToken)
+		if err != nil {
+			return
+		}
+
+		gcpGetGitHubAppInstallationId <- appInstallationId
+	}()
+
+	go func() {
+
+		appInstallationId, err := services.ConnectGitHubWithCloudBuild()
+		if err != nil {
+			return
+		}
+
+		gcpGetGitHubAppInstallationId <- appInstallationId
+	}()
 
 	go func() {
 		createProjectDone <- true

@@ -26,8 +26,6 @@ func (tm *TaskManager) CreateTask(projectID int, status constants.TaskStatus, me
 	return task, err
 }
 
-//err = db.QueryRow("INSERT INTO projects(name, organization_id, toolkit_id) VALUES($1, $2, $3) RETURNING id", project.Name, project.OrganizationID, project.ToolkitID).Scan(&project.ID)
-
 func (tm *TaskManager) UpdateTaskStatus(taskID int, status constants.TaskStatus, message string) error {
 	_, err := tm.db.Exec("UPDATE tasks SET status = $1, message = $2, updated_at = $3 WHERE id = $4",
 		status, message, time.Now(), taskID)
