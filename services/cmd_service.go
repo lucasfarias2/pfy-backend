@@ -15,7 +15,7 @@ func CreateSDKApp(projectName string) error {
 	}
 
 	// Use npx command with project name
-	cmd := exec.Command("npx", "packlify-start-app", projectName)
+	cmd := exec.Command("npx", "packlify-start-app@latest", projectName)
 	cmd.Dir = baseDir
 	err := cmd.Run()
 	if err != nil {

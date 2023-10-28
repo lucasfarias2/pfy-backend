@@ -54,6 +54,9 @@ func CreateProject(project models.Project) (models.Project, error) {
 		if err != nil {
 			return models.Project{}, err
 		}
+
+		updatedProject, err := UpdateProjectRepoName(project.ID, cloneURL)
+		return updatedProject, nil
 	}
 
 	return project, nil

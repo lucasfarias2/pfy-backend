@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"os"
 	"packlify-cloud-backend/models"
 	"packlify-cloud-backend/models/constants"
 	"packlify-cloud-backend/services"
@@ -34,33 +33,44 @@ func CreateProject(c *fiber.Ctx) error {
 
 	tm := services.NewTaskManager()
 	createProjectDone := make(chan bool)
+	gcpConnectNewRepository := make(chan bool)
 	gcpCreateArtifactRepository := make(chan bool)
-	gcpGetGitHubAppInstallationId := make(chan int)
+	//gcpGetGitHubAppInstallationId := make(chan int)
 	gcpCreateBuildTrigger := make(chan BuildTriggerData)
 	gcpRunBuildTrigger := make(chan bool)
 	errs := make(chan error)
+	//
+	//go func() {
+	//	githubToken := os.Getenv("GITHUB_ACCESS_TOKEN")
+	//
+	//	appInstallationId, err := services.FetchAppInstallations(githubToken)
+	//	if err != nil {
+	//		return
+	//	}
+	//
+	//	gcpGetGitHubAppInstallationId <- appInstallationId
+	//}()
 
 	go func() {
-		githubToken := os.Getenv("GITHUB_ACCESS_TOKEN")
+		//appInstallationId := <-gcpGetGitHubAppInstallationId
+		task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_CONNECT_REPOSITORY))
 
-		appInstallationId, err := services.FetchAppInstallations(githubToken)
+		err = gcp.ConnectGithubRepository(newProject)
 		if err != nil {
+			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
+			if err != nil {
+				return
+			}
+			errs <- err
 			return
 		}
 
-		gcpGetGitHubAppInstallationId <- appInstallationId
-	}()
-
-	go func() {
-		appInstallationId := <-gcpGetGitHubAppInstallationId
-
-		fmt.Println("app id", appInstallationId)
-
-		//appInstallationId, err := services.ConnectGitHubWithCloudBuild()
+		err = tm.UpdateTaskStatus(task.ID, constants.Success, "")
 		if err != nil {
+			errs <- err
 			return
 		}
-
+		gcpConnectNewRepository <- true
 	}()
 
 	go func() {
@@ -98,6 +108,7 @@ func CreateProject(c *fiber.Ctx) error {
 
 	go func() {
 		<-gcpCreateArtifactRepository
+		<-gcpConnectNewRepository
 		task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_CREATE_BUILD_TRIGGER))
 		if err != nil {
 			errs <- err
