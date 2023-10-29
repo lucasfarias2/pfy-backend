@@ -26,7 +26,7 @@ func CreateSDKApp(projectName string) error {
 	return nil
 }
 
-func PushToGitHubRepo(repoName, cloneURL string) error {
+func PushToGitHubRepo(repoName string) error {
 	projectPath := "./cloned/" + repoName
 
 	// Change directory to the cloned project
@@ -79,6 +79,15 @@ func PushToGitHubRepo(repoName, cloneURL string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func CleanClonedFolder() error {
+	err := os.RemoveAll("./cloned")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func createFolderIfNotExist(path string) error {

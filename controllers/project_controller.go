@@ -5,161 +5,59 @@ import (
 	"encoding/json"
 	"fmt"
 	"packlify-cloud-backend/models"
-	"packlify-cloud-backend/models/constants"
+	"packlify-cloud-backend/models/tasks_models"
 	"packlify-cloud-backend/services"
-	"packlify-cloud-backend/services/gcp"
+	"packlify-cloud-backend/tasks/gcp_tasks"
+	"packlify-cloud-backend/tasks/project_tasks"
 	"strconv"
 	"time"
 
-	"cloud.google.com/go/cloudbuild/apiv1/v2/cloudbuildpb"
 	"github.com/gofiber/fiber/v2"
 )
 
-type BuildTriggerData struct {
-	IsSuccess bool
-	Trigger   *cloudbuildpb.BuildTrigger
-}
-
 func CreateProject(c *fiber.Ctx) error {
-	project := new(models.Project)
-	if err := c.BodyParser(project); err != nil {
+	projectRequest := new(models.Project)
+	if err := c.BodyParser(projectRequest); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
 	}
 
-	newProject, err := services.CreateProject(*project)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-	}
-
 	tm := services.NewTaskManager()
-	createProjectDone := make(chan bool)
-	gcpConnectNewRepository := make(chan bool)
-	gcpCreateArtifactRepository := make(chan bool)
-	gcpCreateBuildTrigger := make(chan BuildTriggerData)
-	gcpRunBuildTrigger := make(chan bool)
 	errs := make(chan error)
 
-	go func() {
-		task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_CONNECT_REPOSITORY))
-		if err != nil {
-			return
-		}
+	projectGenerateFilesFromToolkit := make(chan bool)
+	projectCreateGithubRepository := make(chan bool)
+	projectPushToGithubRepository := make(chan bool)
 
-		err = gcp.ConnectGithubRepository(newProject)
-		if err != nil {
-			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
-			if err != nil {
-				return
-			}
-			errs <- err
-			return
-		}
+	gcpConnectNewRepository := make(chan bool)
+	gcpCreateArtifactRepository := make(chan bool)
+	gcpCreateBuildTrigger := make(chan tasks_models.BuildTriggerData)
+	gcpRunBuildTrigger := make(chan bool)
 
-		err = tm.UpdateTaskStatus(task.ID, constants.Success, "")
-		if err != nil {
-			errs <- err
-			return
-		}
-		gcpConnectNewRepository <- true
-	}()
+	// Project for Frontend Toolkit tasks
+	newProject, err := project_tasks.CreateProjectTask(tm, *projectRequest, errs)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Error creating project"})
+	}
 
-	go func() {
-		createProjectDone <- true
-	}()
+	go project_tasks.GenerateFilesFromToolkitTask(tm, newProject, projectGenerateFilesFromToolkit, errs)
+	go project_tasks.CreateGithubRepositoryTask(tm, newProject, projectGenerateFilesFromToolkit, projectCreateGithubRepository, errs)
+	go project_tasks.PushToGithubTask(tm, newProject, projectCreateGithubRepository, projectPushToGithubRepository, errs)
 
-	go func() {
-		<-createProjectDone
-		task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_CREATE_ARTIFACT_REPOSITORY))
-
-		if err != nil {
-			errs <- err
-			return
-		}
-
-		err = gcp.CreateArtifactRepository(newProject)
-
-		if err != nil {
-			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
-			if err != nil {
-				return
-			}
-			errs <- err
-			return
-		}
-
-		err = tm.UpdateTaskStatus(task.ID, constants.Success, "")
-		if err != nil {
-			errs <- err
-			return
-		}
-
-		gcpCreateArtifactRepository <- true
-	}()
-
-	go func() {
-		<-gcpCreateArtifactRepository
-		<-gcpConnectNewRepository
-		task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_CREATE_BUILD_TRIGGER))
-		if err != nil {
-			errs <- err
-			return
-		}
-
-		trigger, err := gcp.CreateBuildTrigger(newProject)
-
-		if err != nil {
-			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
-			errs <- err
-			return
-		}
-
-		err = tm.UpdateTaskStatus(task.ID, constants.Success, "")
-		if err != nil {
-			errs <- err
-			return
-		}
-
-		gcpCreateBuildTrigger <- BuildTriggerData{
-			IsSuccess: true,
-			Trigger:   trigger,
-		}
-	}()
-
-	go func() {
-		gcpCreateBuildData := <-gcpCreateBuildTrigger
-
-		task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_RUN_BUILD_TRIGGER))
-		if err != nil {
-			errs <- err
-			return
-		}
-
-		err = gcp.RunBuildTrigger(newProject, gcpCreateBuildData.Trigger)
-
-		if err != nil {
-			err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
-			errs <- err
-			return
-		}
-
-		err = tm.UpdateTaskStatus(task.ID, constants.Success, "")
-		if err != nil {
-			errs <- err
-			return
-		}
-
-		gcpRunBuildTrigger <- true
-	}()
+	// Google Cloud Platform for Frontend Toolkit tasks
+	go gcp_tasks.ConnectGithubRepositoryTask(tm, newProject, gcpConnectNewRepository, errs)
+	go gcp_tasks.CreateArtifactRepositoryTask(tm, newProject, gcpCreateArtifactRepository, errs)
+	go gcp_tasks.CreateBuildTriggerTask(tm, newProject, gcpCreateBuildTrigger, gcpCreateArtifactRepository, gcpConnectNewRepository, errs)
+	go gcp_tasks.RunBuildTriggerTask(tm, newProject, gcpCreateBuildTrigger, gcpRunBuildTrigger, errs)
 
 	return c.JSON(newProject)
 }
 
 func GetAllProjects(c *fiber.Ctx) error {
-	organization_id := c.Query("organization_id")
-	if organization_id == "" {
+	organizationId := c.Query("organization_id")
+	if organizationId == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid organization ID"})
 	}
-	projects, err := services.GetAllProjects(organization_id)
+	projects, err := services.GetAllProjects(organizationId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

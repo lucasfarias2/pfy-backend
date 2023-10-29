@@ -3,64 +3,9 @@ package services
 import (
 	"database/sql"
 	"log"
-	"os"
 	"packlify-cloud-backend/models"
-	"packlify-cloud-backend/models/constants"
 	"packlify-cloud-backend/utils"
 )
-
-func CreateProject(project models.Project) (models.Project, error) {
-	db := utils.GetDB()
-	tm := NewTaskManager()
-
-	err := db.QueryRow("INSERT INTO projects(name, organization_id, toolkit_id) VALUES($1, $2, $3) RETURNING id", project.Name, project.OrganizationID, project.ToolkitID).Scan(&project.ID)
-	if err != nil {
-		return models.Project{}, err
-	}
-
-	task, err := tm.CreateTask(project.ID, constants.Running, "", string(constants.PROJECT_CREATE))
-	if err != nil {
-		return models.Project{}, err
-	}
-
-	var toolkitName string
-	err = db.QueryRow("SELECT name FROM toolkits WHERE id=$1", project.ToolkitID).Scan(&toolkitName)
-	if err != nil {
-		return models.Project{}, err
-	}
-
-	if toolkitName == "React" {
-		if err != nil {
-			return models.Project{}, err
-		}
-
-		err := CreateSDKApp(project.Name)
-		if err != nil {
-			return models.Project{}, err
-		}
-
-		githubToken := os.Getenv("GITHUB_ACCESS_TOKEN")
-		cloneURL, err := CreateGitHubRepo(project.Name, githubToken)
-		if err != nil {
-			log.Fatalf("Error creating Github repo: %s", err)
-		}
-
-		err = PushToGitHubRepo(project.Name, cloneURL)
-		if err != nil {
-			log.Fatalf("Error pushing Github repo: %s", err)
-		}
-
-		err = tm.UpdateTaskStatus(task.ID, constants.Success, "Project created successfully")
-		if err != nil {
-			return models.Project{}, err
-		}
-
-		updatedProject, err := UpdateProjectRepoName(project.ID, cloneURL)
-		return updatedProject, nil
-	}
-
-	return project, nil
-}
 
 func GetAllProjects(organizationId string) ([]models.Project, error) {
 	db := utils.GetDB()
@@ -106,7 +51,7 @@ func GetProjectStatusById(id int) ([]models.Task, error) {
         SELECT id, project_id, task_name, status, message, created_at, updated_at
         FROM tasks
         WHERE project_id = $1
-        ORDER BY created_at DESC
+        ORDER BY created_at ASC
     `
 
 	// Execute the query
@@ -142,7 +87,7 @@ func UpdateProjectRepoName(id int, newRepoName string) (models.Project, error) {
 		return models.Project{}, err
 	}
 
-	err = db.QueryRow("SELECT id, name, github_repo, organization_id, toolkit_id FROM projects WHERE id = $1", id).Scan(&project.ID, &project.Name, &project.GitHubRepo, &project.OrganizationID, &project.ToolkitID)
+	err = db.QueryRow("SELECT id, name, github_repo, organization_id, toolkit FROM projects WHERE id = $1", id).Scan(&project.ID, &project.Name, &project.GitHubRepo, &project.OrganizationID, &project.Toolkit)
 	if err != nil {
 		return models.Project{}, err
 	}
