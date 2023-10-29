@@ -8,17 +8,16 @@ import (
 	"packlify-cloud-backend/services/gcp"
 )
 
-func RunBuildTriggerTask(tm *services.TaskManager, newProject chan models.Project, gcpCreateBuildTrigger chan tasks_models.BuildTriggerData, gcpRunBuildTrigger chan bool, errs chan error) {
+func RunBuildTriggerTask(tm *services.TaskManager, newProject models.Project, gcpCreateBuildTrigger chan tasks_models.BuildTriggerData, gcpRunBuildTrigger chan bool, errs chan error) {
 	gcpCreateBuildData := <-gcpCreateBuildTrigger
-	project := <-newProject
 
-	task, err := tm.CreateTask(project.ID, constants.Running, "", string(constants.GCP_RUN_BUILD_TRIGGER))
+	task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_RUN_BUILD_TRIGGER))
 	if err != nil {
 		errs <- err
 		return
 	}
 
-	err = gcp.RunBuildTrigger(project, gcpCreateBuildData.Trigger)
+	err = gcp.RunBuildTrigger(newProject, gcpCreateBuildData.Trigger)
 
 	if err != nil {
 		err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())

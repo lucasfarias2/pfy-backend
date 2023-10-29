@@ -14,9 +14,9 @@ func CreateProjectTask(tm *services.TaskManager, projectRequest models.Project, 
 	task, err := tm.CreateTask(projectRequest.ID, constants.Running, "", string(constants.PROJECT_CREATE))
 	var newProject models.Project
 
-	githubRepo := fmt.Sprintf("https://github.com/%s/%s", os.Getenv("GITHUB_OWNER"), projectRequest.Name)
+	githubRepo := fmt.Sprintf("https://github.com/%s/%s.git", os.Getenv("GITHUB_OWNER"), projectRequest.Name)
 
-	err = db.QueryRow("INSERT INTO projects(name, organization_id, toolkit, github_repo) VALUES($1, $2, $3, $4) RETURNING id, name, organization_id, toolkit, github_repo", projectRequest.Name, projectRequest.OrganizationID, projectRequest.Toolkit, githubRepo).Scan(&newProject.ID, &newProject.Name, &newProject.OrganizationID, &newProject.Toolkit)
+	err = db.QueryRow("INSERT INTO projects(name, organization_id, toolkit, github_repo) VALUES($1, $2, $3, $4) RETURNING id, name, organization_id, toolkit, github_repo", projectRequest.Name, projectRequest.OrganizationID, projectRequest.Toolkit, githubRepo).Scan(&newProject.ID, &newProject.Name, &newProject.OrganizationID, &newProject.Toolkit, &newProject.GitHubRepo)
 	if err != nil {
 		err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
 		if err != nil {

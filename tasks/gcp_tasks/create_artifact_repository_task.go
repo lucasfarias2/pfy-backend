@@ -7,17 +7,17 @@ import (
 	"packlify-cloud-backend/services/gcp"
 )
 
-func CreateArtifactRepositoryTask(tm *services.TaskManager, newProject chan models.Project, gcpCreateArtifactRepository chan bool, errs chan error) {
-	project := <-newProject
+func CreateArtifactRepositoryTask(tm *services.TaskManager, newProject models.Project, gcpConnectNewRepository chan bool, gcpCreateArtifactRepository chan bool, errs chan error) {
+	<-gcpConnectNewRepository
 
-	task, err := tm.CreateTask(project.ID, constants.Running, "", string(constants.GCP_CREATE_ARTIFACT_REPOSITORY))
+	task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_CREATE_ARTIFACT_REPOSITORY))
 
 	if err != nil {
 		errs <- err
 		return
 	}
 
-	err = gcp.CreateArtifactRepository(project)
+	err = gcp.CreateArtifactRepository(newProject)
 
 	if err != nil {
 		err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())

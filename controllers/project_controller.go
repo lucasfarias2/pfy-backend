@@ -44,9 +44,9 @@ func CreateProject(c *fiber.Ctx) error {
 	go project_tasks.PushToGithubTask(tm, newProject, projectCreateGithubRepository, projectPushToGithubRepository, errs)
 
 	// Google Cloud Platform for Frontend Toolkit tasks
-	go gcp_tasks.ConnectGithubRepositoryTask(tm, newProject, gcpConnectNewRepository, errs)
-	go gcp_tasks.CreateArtifactRepositoryTask(tm, newProject, gcpCreateArtifactRepository, errs)
-	go gcp_tasks.CreateBuildTriggerTask(tm, newProject, gcpCreateBuildTrigger, gcpCreateArtifactRepository, gcpConnectNewRepository, errs)
+	go gcp_tasks.ConnectGithubRepositoryTask(tm, newProject, projectPushToGithubRepository, gcpConnectNewRepository, errs)
+	go gcp_tasks.CreateArtifactRepositoryTask(tm, newProject, gcpConnectNewRepository, gcpCreateArtifactRepository, errs)
+	go gcp_tasks.CreateBuildTriggerTask(tm, newProject, gcpCreateBuildTrigger, gcpCreateArtifactRepository, errs)
 	go gcp_tasks.RunBuildTriggerTask(tm, newProject, gcpCreateBuildTrigger, gcpRunBuildTrigger, errs)
 
 	return c.JSON(newProject)

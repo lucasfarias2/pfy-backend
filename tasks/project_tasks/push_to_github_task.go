@@ -7,13 +7,12 @@ import (
 	"packlify-cloud-backend/services"
 )
 
-func PushToGithubTask(tm *services.TaskManager, newProject chan models.Project, projectCreateGithubRepository chan bool, projectPushToGithub chan bool, errs chan error) {
-	project := <-newProject
+func PushToGithubTask(tm *services.TaskManager, newProject models.Project, projectCreateGithubRepository chan bool, projectPushToGithubRepository chan bool, errs chan error) {
 	<-projectCreateGithubRepository
 
-	task, _ := tm.CreateTask(project.ID, "Running", "", string(constants.PROJECT_PUSH_GITHUB))
+	task, _ := tm.CreateTask(newProject.ID, "Running", "", string(constants.PROJECT_PUSH_GITHUB))
 
-	err := services.PushToGitHubRepo(project.GitHubRepo)
+	err := services.PushToGitHubRepo(newProject.Name)
 	if err != nil {
 		err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
 		errs <- err
@@ -27,6 +26,5 @@ func PushToGithubTask(tm *services.TaskManager, newProject chan models.Project, 
 		log.Print("Error cleaning cloned folder")
 	}
 
-	projectPushToGithub <- true
-	newProject <- project
+	projectPushToGithubRepository <- true
 }

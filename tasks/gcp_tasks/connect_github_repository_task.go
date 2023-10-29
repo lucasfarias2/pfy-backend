@@ -7,15 +7,15 @@ import (
 	"packlify-cloud-backend/services/gcp"
 )
 
-func ConnectGithubRepositoryTask(tm *services.TaskManager, newProject chan models.Project, gcpConnectNewRepository chan bool, errs chan error) {
-	project := <-newProject
+func ConnectGithubRepositoryTask(tm *services.TaskManager, newProject models.Project, projectPushToGithubRepository chan bool, gcpConnectNewRepository chan bool, errs chan error) {
+	<-projectPushToGithubRepository
 
-	task, err := tm.CreateTask(project.ID, constants.Running, "", string(constants.GCP_CONNECT_REPOSITORY))
+	task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_CONNECT_REPOSITORY))
 	if err != nil {
 		return
 	}
 
-	err = gcp.ConnectGithubRepository(project)
+	err = gcp.ConnectGithubRepository(newProject)
 	if err != nil {
 		err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
 		if err != nil {

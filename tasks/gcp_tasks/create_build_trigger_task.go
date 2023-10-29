@@ -8,18 +8,16 @@ import (
 	"packlify-cloud-backend/services/gcp"
 )
 
-func CreateBuildTriggerTask(tm *services.TaskManager, newProject chan models.Project, gcpCreateBuildTrigger chan tasks_models.BuildTriggerData, gcpCreateArtifactRepository chan bool, gcpConnectNewRepository chan bool, errs chan error) {
+func CreateBuildTriggerTask(tm *services.TaskManager, newProject models.Project, gcpCreateBuildTrigger chan tasks_models.BuildTriggerData, gcpCreateArtifactRepository chan bool, errs chan error) {
 	<-gcpCreateArtifactRepository
-	<-gcpConnectNewRepository
-	project := <-newProject
 
-	task, err := tm.CreateTask(project.ID, constants.Running, "", string(constants.GCP_CREATE_BUILD_TRIGGER))
+	task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_CREATE_BUILD_TRIGGER))
 	if err != nil {
 		errs <- err
 		return
 	}
 
-	trigger, err := gcp.CreateBuildTrigger(project)
+	trigger, err := gcp.CreateBuildTrigger(newProject)
 
 	if err != nil {
 		err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
@@ -34,7 +32,6 @@ func CreateBuildTriggerTask(tm *services.TaskManager, newProject chan models.Pro
 	}
 
 	gcpCreateBuildTrigger <- tasks_models.BuildTriggerData{
-		IsSuccess: true,
-		Trigger:   trigger,
+		Trigger: trigger,
 	}
 }

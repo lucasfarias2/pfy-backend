@@ -11,13 +11,18 @@ func CreateGithubRepositoryTask(tm *services.TaskManager, newProject models.Proj
 
 	task, _ := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.PROJECT_CREATE_GITHUB))
 
-	updatedProject, err := services.CreateGitHubRepo(newProject)
+	newProject, err := services.CreateGitHubRepo(newProject)
 	if err != nil {
 		err := tm.UpdateTaskStatus(task.ID, "Failed", err.Error())
 		if err != nil {
 			return
 		}
 		errs <- err
+		return
+	}
+
+	err = tm.UpdateTaskStatus(task.ID, constants.Success, "")
+	if err != nil {
 		return
 	}
 
