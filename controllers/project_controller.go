@@ -35,25 +35,16 @@ func CreateProject(c *fiber.Ctx) error {
 	createProjectDone := make(chan bool)
 	gcpConnectNewRepository := make(chan bool)
 	gcpCreateArtifactRepository := make(chan bool)
-	//gcpGetGitHubAppInstallationId := make(chan int)
+
 	gcpCreateBuildTrigger := make(chan BuildTriggerData)
 	gcpRunBuildTrigger := make(chan bool)
 	errs := make(chan error)
-	//
-	//go func() {
-	//	githubToken := os.Getenv("GITHUB_ACCESS_TOKEN")
-	//
-	//	appInstallationId, err := services.FetchAppInstallations(githubToken)
-	//	if err != nil {
-	//		return
-	//	}
-	//
-	//	gcpGetGitHubAppInstallationId <- appInstallationId
-	//}()
 
 	go func() {
-		//appInstallationId := <-gcpGetGitHubAppInstallationId
 		task, err := tm.CreateTask(newProject.ID, constants.Running, "", string(constants.GCP_CONNECT_REPOSITORY))
+		if err != nil {
+			return
+		}
 
 		err = gcp.ConnectGithubRepository(newProject)
 		if err != nil {
@@ -201,6 +192,9 @@ func GetProjectStatus(c *fiber.Ctx) error {
 
 			msg := fmt.Sprintf("data: %s\n\n", data)
 			_, err = w.WriteString(msg)
+			if err != nil {
+				break
+			}
 
 			err = w.Flush()
 			if err != nil {
