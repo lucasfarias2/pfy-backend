@@ -22,6 +22,7 @@ func CreateProject(c *fiber.Ctx) error {
 	}
 
 	tm := services.NewTaskManager()
+
 	errs := make(chan error)
 
 	projectGenerateFilesFromToolkit := make(chan bool)
@@ -33,12 +34,12 @@ func CreateProject(c *fiber.Ctx) error {
 	gcpCreateBuildTrigger := make(chan tasks_models.BuildTriggerData)
 	gcpRunBuildTrigger := make(chan bool)
 
-	// Project for Frontend Toolkit tasks
-	newProject, err := project_tasks.CreateProjectTask(tm, *projectRequest, errs)
+	newProject, err := project_tasks.CreateProjectTask(*projectRequest)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Error creating project"})
 	}
 
+	// Project for Frontend Toolkit tasks
 	go project_tasks.GenerateFilesFromToolkitTask(tm, newProject, projectGenerateFilesFromToolkit, errs)
 	go project_tasks.CreateGithubRepositoryTask(tm, newProject, projectGenerateFilesFromToolkit, projectCreateGithubRepository, errs)
 	go project_tasks.PushToGithubTask(tm, newProject, projectCreateGithubRepository, projectPushToGithubRepository, errs)
