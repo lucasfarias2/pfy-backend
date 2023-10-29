@@ -35,7 +35,6 @@ func CreateProject(c *fiber.Ctx) error {
 	createProjectDone := make(chan bool)
 	gcpConnectNewRepository := make(chan bool)
 	gcpCreateArtifactRepository := make(chan bool)
-
 	gcpCreateBuildTrigger := make(chan BuildTriggerData)
 	gcpRunBuildTrigger := make(chan bool)
 	errs := make(chan error)
